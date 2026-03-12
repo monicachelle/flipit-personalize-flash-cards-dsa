@@ -23,6 +23,57 @@ public class FlipItCard {
         }
     }
 
+    // ---------- queue support ----------
+    static Node queueFront = null, queueRear = null;
+    static int queueSize = 0;
+
+    static void enqueue(Card c) {
+        Node n = new Node(c);
+        if (queueRear == null) {
+            queueFront = queueRear = n;
+        } else {
+            queueRear.next = n;
+            queueRear = n;
+        }
+        queueSize++;
+    }
+
+    static Card dequeue() {
+        if (queueFront == null) return null;
+        Card c = queueFront.card;
+        queueFront = queueFront.next;
+        if (queueFront == null) queueRear = null;
+        queueSize--;
+        return c;
+    }
+
+    static void viewQueue() {
+        if (queueFront == null) {
+            System.out.println("Queue is empty.");
+            return;
+        }
+        Node t = queueFront;
+        while (t != null) {
+            printCard(t.card);
+            t = t.next;
+        }
+    }
+
+    static void removeFromQueue(Card card) {
+        Node prev = null, cur = queueFront;
+        while (cur != null) {
+            if (cur.card == card) {
+                if (prev == null) queueFront = cur.next;
+                else prev.next = cur.next;
+                if (cur == queueRear) queueRear = prev;
+                queueSize--;
+                return;
+            }
+            prev = cur;
+            cur = cur.next;
+        }
+    }
+
     // Linked list for all cards
     static Node head = null;
     static int size = 0;
@@ -144,9 +195,13 @@ public class FlipItCard {
                 case 8: deleteCard(); break;
                 case 9: wordCharCount(); break;
                 case 10: changeOrder(); break;
-                case 11:
+                case 11: enqueueMenu(); break;
+                case 12: dequeueMenu(); break;
+                case 13: viewQueue(); break;
+                case 14:
                     System.out.println("\nThank you for using FlipIt Cards!");
                     return;
+                case 15: bubbleSort(); break;
                 default: System.out.println("Invalid option.");
             }
         }
@@ -164,8 +219,12 @@ public class FlipItCard {
         System.out.println("7. Search Card");
         System.out.println("8. Delete Card");
         System.out.println("9. Word & Character Count");
-        System.out.println("10. Change Card Order");
-        System.out.println("11. Exit");
+        System.out.println("10. Change Card Order (merge sort)");
+        System.out.println("11. Enqueue Card");
+        System.out.println("12. Dequeue Card");
+        System.out.println("13. View Queue");
+        System.out.println("14. Exit");
+        System.out.println("15. Change Card Order (bubble sort)");
         System.out.print("Choose: ");
     }
 
@@ -241,6 +300,7 @@ public class FlipItCard {
         if (last == null) { System.out.println("Nothing to undo."); return; }
         pushRedo(last);
         removeFromList(last);
+        removeFromQueue(last);
         headingTable.remove(last.heading.toLowerCase());
         idTable.remove(String.valueOf(last.id));
         size--;
@@ -287,6 +347,7 @@ public class FlipItCard {
             if (cur.card.id == id) {
                 if (prev == null) head = cur.next;
                 else prev.next = cur.next;
+                removeFromQueue(cur.card);
                 headingTable.remove(cur.card.heading.toLowerCase());
                 idTable.remove(String.valueOf(cur.card.id));
                 size--;
@@ -312,8 +373,19 @@ public class FlipItCard {
     }
 
     static void changeOrder() {
+        // retain for backwards compatibility; points to merge sort
+        changeOrderMerge();
+    }
+
+    static void changeOrderMerge() {
         if (head == null || head.next == null) { System.out.println("Not enough cards."); return; }
-        // Simple bubble sort on linked list
+        // merge sort for linked list
+        head = mergeSort(head);
+        System.out.println("Cards reordered alphabetically using merge sort.");
+    }
+
+    static void bubbleSort() {
+        if (head == null || head.next == null) { System.out.println("Not enough cards."); return; }
         boolean swapped;
         do {
             swapped = false;
@@ -328,7 +400,66 @@ public class FlipItCard {
                 t = t.next;
             }
         } while (swapped);
-        System.out.println("Cards reordered alphabetically.");
+        System.out.println("Cards reordered alphabetically using bubble sort.");
+    }
+
+    // merge sort helper methods
+    static Node mergeSort(Node h) {
+        if (h == null || h.next == null) return h;
+        Node middle = getMiddle(h);
+        Node nextOfMiddle = middle.next;
+        middle.next = null;
+        Node left = mergeSort(h);
+        Node right = mergeSort(nextOfMiddle);
+        return sortedMerge(left, right);
+    }
+
+    static Node sortedMerge(Node a, Node b) {
+        if (a == null) return b;
+        if (b == null) return a;
+        if (a.card.heading.toLowerCase().compareTo(b.card.heading.toLowerCase()) <= 0) {
+            a.next = sortedMerge(a.next, b);
+            return a;
+        } else {
+            b.next = sortedMerge(a, b.next);
+            return b;
+        }
+    }
+
+    static Node getMiddle(Node h) {
+        if (h == null) return h;
+        Node slow = h, fast = h.next;
+        while (fast != null) {
+            fast = fast.next;
+            if (fast != null) {
+                slow = slow.next;
+                fast = fast.next;
+            }
+        }
+        return slow;
+    }
+
+    // queue menu helpers
+    static void enqueueMenu() {
+        System.out.print("Enter Card ID to enqueue: ");
+        int id = readInt();
+        Card c = idTable.get(String.valueOf(id));
+        if (c == null) {
+            System.out.println("Card not found.");
+            return;
+        }
+        enqueue(c);
+        System.out.println("Card added to queue.");
+    }
+
+    static void dequeueMenu() {
+        Card c = dequeue();
+        if (c == null) {
+            System.out.println("Queue is empty.");
+            return;
+        }
+        System.out.println("Dequeued card:");
+        printCard(c);
     }
 
     static void removeFromList(Card card) {
